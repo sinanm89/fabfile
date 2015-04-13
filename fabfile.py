@@ -8,7 +8,7 @@ from getpass import getpass
 @task
 def setup():
     db_user = prompt("Enter your db username:", default="databaseuser")
-    db_password = prompt("Enter your db password:", default="wassup89")
+    db_password = prompt("Enter your db password:", default="kalem")
     setup_geo = prompt("Setup geospatial libraries?", default=False)
     compile_geo = prompt("Compile the geospatial libraries?", default=False)
 
