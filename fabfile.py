@@ -7,9 +7,10 @@ from getpass import getpass
 
 @task
 def setup():
+    db_name = prompt("Enter your db name:", default="projectdb")
     db_user = prompt("Enter your db username:", default="databaseuser")
-    db_password = prompt("Enter your db password:", default="kalem")
-    setup_geo = prompt("Setup geospatial libraries?", default=False)
+    db_password = prompt("Enter your db password:", default="vagrant")
+    setup_geo  = prompt("Setup geospatial libraries?", default=False)
     compile_geo = prompt("Compile the geospatial libraries?", default=False)
 
     run("sudo apt-get update")
@@ -40,26 +41,46 @@ def setup():
     ])
     sudo("pip install virtualenv")
     run('virtualenv env')
-    with fabtools.python.virtualenv('/home/vagrant/env'):
-            run("pip install -r /vagrant/conf/requirements.pip")
+    
+    setup_pip()
 
-    sudo("echo 'local all postgres trust' | sudo tee -a /etc/postgresql/9.3/main/pg_hba.conf")
-    sudo("echo 'local all all trust' | sudo tee -a /etc/postgresql/9.3/main/pg_hba.conf")
+    # sudo("echo 'local all postgres trust' | sudo tee -a /etc/postgresql/9.3/main/pg_hba.conf")
+    # sudo("echo 'local all all trust' | sudo tee -a /etc/postgresql/9.3/main/pg_hba.conf")
+    sudo("cp /vagrant/conf/pg_hba.conf /etc/postgresql/9.3/main/.")
     sudo("service postgresql restart")
 
-    setup_postgresql(dbu=db_user, password=db_password, geo=setup_geo, compile_pkgs=compile_geo)
+    setup_postgresql(db_name=db_name, dbu=db_user,
+                    password=db_password, geo=setup_geo, compile_pkgs=compile_geo)
 
 @task
-def setup_postgresql(dbu="databasedbu", password="md56e768dc178fc80686d18b76a6e588428", geo=False, compile_pkgs=False):
+def setup_pip():
+    with fabtools.python.virtualenv('/home/vagrant/env'):
+        if exists("/vagrant/conf/requirements.pip"):
+            run("pip install -r /vagrant/conf/requirements.pip")
+        else:
+            with cd("/vagrant/conf"):
+                try:
+                    run('pip install -r /vagrant/conf/requirements.pip')
+                except:
+                    run('pip install django==1.8')
+
+
+@task
+def setup_postgresql(db_name="projectdb", dbu="databasedbu", 
+                     password="vagrant", geo=False, compile_pkgs=False):
+    if not db_name:
+        db_name = prompt("Enter your db name:", default="projectdb")
+        dbu = prompt("Enter your db username:", default="databaseuser")
+        password = prompt("Enter your db password:", default="wassup89")
+        geo = prompt("Setup geospatial libraries?", default=False)
+        compile_pkgs = prompt("Compile the geospatial libraries?", default=False)
+
     if geo:
         setup_geodjango(compile_pkgs=compile_pkgs)
-    else:
-        with settings(warn_only=True):
-            run("sudo -u postgres createdb -E UTF8 -T template0 --locale=en_US.utf-8 template_postgis")
-            run("""sudo -u postgres psql -c "CREATE ROLE %s WITH ENCRYPTED PASSWORD '%s' NOSUPERUSER CREATEDB NOCREATEROLE INHERIT LOGIN;" """ % (dbu, password))
-            run("sudo -u postgres createdb -T template_postgis -O %s %s" % (dbu, password))
-    
-        
+    with settings(warn_only=True):
+        run("sudo -u postgres createdb -E UTF8 -T template0 --locale=en_US.utf-8 template_postgis")
+        run("""sudo -u postgres psql -c "CREATE ROLE %s WITH ENCRYPTED PASSWORD '%s' NOSUPERUSER CREATEDB NOCREATEROLE INHERIT LOGIN;" """ % (dbu, password))
+        run("sudo -u postgres createdb -T template_postgis -O %s %s" % (dbu, db_name))
 
 @task
 def setup_geodjango(compile_pkgs=False):
@@ -138,3 +159,15 @@ def remove_template_postgis():
     
 def setup_django():
     pass
+
+@task
+def setup_zsh():
+    run("sudo apt-get update")
+    sudo("apt-get install zsh")
+    try:
+        run("curl -L https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sh")
+    except:
+        pass
+    sudo("chsh -s /bin/zsh")
+
+
